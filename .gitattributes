@@ -1,0 +1,28 @@
+# Taken from https://thelinuxcode.com/gitattribute-file-in-git/
+#
+
+## Force LF endings on checkout
+#* text eol=lf
+
+# Set default behavior to automatically normalize line endings  
+# * text=auto
+
+# Force UTF-8 encoding for certain file types
+*.md text encoding=utf-8
+*.txt text encoding=utf-8
+
+# The binary attribute avoids converting line endings and enables binary diffing:
+*.jpg binary
+*.png binary
+*.bin binary
+*.bit binary
+
+# Set Unix line endings for shell scripts  
+*.sh text eol=lf
+
+# Ignore compressed archives from exports
+*.tgz export-ignore
+*.zip export-ignore
+
+# But declare docs binary
+Documents/* binary
