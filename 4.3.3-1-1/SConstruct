@@ -1,0 +1,155 @@
+# -*- python -*-
+# ex: set syntax=python
+
+
+######### Top level SConstruct file
+
+AddOption('--target', dest='target', type='string', nargs=1, action='store',
+    help='target triplet (used to identify toolchain)', default='arm-none-linux-gnueabi')
+TARGET_PREFIX= GetOption('target') + '-'
+
+print "TARGET_PREFIX: " + TARGET_PREFIX
+
+AddOption('--verbose', dest='verbose', action='store_true',
+    help='print lots of information')
+
+AddOption('--prefix', dest='prefix', type='string', nargs=1, action='store',
+    help='specify install path prefix', default='/usr/local')
+
+AddOption('--dstdir', dest='dstdir', type='string', nargs=1, action='store',
+    help='specify a directory to act as a build root', default='')
+
+######### set up environment
+
+import os
+env = Environment()
+
+env.Decider('MD5-timestamp')
+
+TARGET_TOOLS_DIR = '/opt/freescale/usr/local/gcc-4.1.2-glibc-2.5-nptl-3/arm-none-linux-gnueabi/bin/'
+TARGET_ROOTFS    = '/opt/stable/f28dev20110228'
+
+print "TARGET_TOOLS_DIR: " + TARGET_TOOLS_DIR
+print "TARGET_ROOTFS: " + TARGET_ROOTFS
+
+env.Replace(CC = TARGET_TOOLS_DIR + TARGET_PREFIX + 'gcc')
+env.Replace(CXX = TARGET_TOOLS_DIR + TARGET_PREFIX + 'g++')
+env.Replace(AR = TARGET_PREFIX + 'ar')
+env.Replace(AS = TARGET_PREFIX + 'as')
+env.Replace(RANLIB = TARGET_PREFIX + 'ranlib')
+env.Replace(LD = TARGET_PREFIX + 'ld')
+env.Replace(STRIP = TARGET_PREFIX + 'strip')
+
+_3RDPARTY_DIR = os.getcwd() + os.sep + '3rdParty'
+
+BOOST_INC = _3RDPARTY_DIR + os.sep + 'boost'
+BOOST_LIB = _3RDPARTY_DIR + os.sep + 'boost' + os.sep + 'lib' + os.sep + TARGET_PREFIX + 'gcc'
+
+LIBSIGC_INC = _3RDPARTY_DIR + os.sep + 'libsigc++'
+LIBSIGC_LIB = _3RDPARTY_DIR + os.sep + 'libsigc++' + os.sep + 'libs' + os.sep + TARGET_PREFIX + 'gcc'
+
+XERCES_INC = _3RDPARTY_DIR + os.sep + 'xerces-c' + os.sep + 'include'
+XERCES_LIB = _3RDPARTY_DIR + os.sep + 'xerces-c' + os.sep + 'lib' + os.sep + TARGET_PREFIX + 'gcc'
+
+XALAN_INC = _3RDPARTY_DIR + os.sep + 'xml-xalan' + os.sep + 'c' + os.sep + 'src'
+XALAN_LIB = _3RDPARTY_DIR + os.sep + 'xml-xalan' + os.sep + 'c' + os.sep + 'lib' + os.sep + TARGET_PREFIX + 'gcc'
+
+LOKI_INC = _3RDPARTY_DIR + os.sep + 'loki' + os.sep + 'include'
+LOKI_LIB = ''
+
+FREESCALE_USR_INC = TARGET_ROOTFS + '/usr/include'
+FREESCALE_USR_LIB = TARGET_ROOTFS + '/usr/lib'
+FREESCALE_LINUX_INC = TARGET_ROOTFS + '/usr/src/linux/include'
+
+env.Append(CPPPATH = [FREESCALE_LINUX_INC,])
+env.Append(LIBPATH = [FREESCALE_USR_LIB])
+
+env.Append(CCFLAGS = ['-Dbool=char', '-Dtrue=1', '-Dfalse=0', '-DCONFIG_MXC_PMIC_MC13783', '-Wall','-Wno-trigraphs', '-O2', '-fno-strict-aliasing', '-fno-common']) 
+
+env.Append(LINKFLAGS = ['-lpthread', '-lm'])
+
+if( GetOption('verbose') ):
+    print env.Dump()
+
+
+INSTALL_PATH=GetOption('prefix') + os.sep + 'hhdfphy'
+DSTDIR_PATH=GetOption('dstdir')
+if DSTDIR_PATH != '':
+    INSTALL_PATH=DSTDIR_PATH + os.sep + INSTALL_PATH
+env.Alias('i_instpath', INSTALL_PATH)
+env.Alias('i_dstpath', DSTDIR_PATH)
+env.Alias('install', ['i_instpath', 'i_dstpath'])
+
+DO_INSTALL=False
+if 'install' in COMMAND_LINE_TARGETS:
+    DO_INSTALL=True
+    
+
+Export('env')
+
+
+######## utilities
+
+class Utils:
+    def __init__(self, prefix):
+        self.source_exts = ['.cpp', '.c']
+        self.target_prefix = prefix
+
+    def list_files(self, dirname, extensions = []):
+        file_list = []
+        for file in os.listdir(dirname):
+            if len(extensions) > 0:
+                for ext in extensions:
+                    if file.endswith(ext):
+                        file_list.append(file)
+                        break
+            else:
+                file_list.append(file)
+        return file_list
+    
+    def list_source_files(self, dirname):
+        return self.list_files(dirname, self.source_exts)
+        
+    def source_files_in_dir_list(self, dirlist):
+        source_file_list = []
+        for dir in dirlist:
+            for src_file in self.list_source_files(dir):
+                source_file_list.append( dir + os.sep + src_file )
+        return source_file_list
+
+    def files_in_dir_list_no_prefix(self, dirlist, extensions = []):
+        file_list = []
+        for dir in dirlist:
+            file_list.extend( self.list_files(dir, extensions ) )
+        return file_list
+
+utils = Utils(TARGET_PREFIX)
+
+Export('utils')
+
+######## call component builds
+
+
+
+#SRC_FILES=[ 'main.c', ]
+
+#pb_prog = env.Program('powerbuttond', SRC_FILES, LIBS=[])
+
+import glob
+if DO_INSTALL:
+    print INSTALL_PATH
+    print DSTDIR_PATH
+    env.Install(DSTDIR_PATH + '/etc/rc.d/init.d', '#scripts/hhdfphy')        # upstart script
+    env.Install(INSTALL_PATH, '#hhdfphy_pwr_cal.conf.template')              # calibration file template
+    env.Install(INSTALL_PATH, '#3rdParty/Plextek/1qs02/bin/hhdfphy')         # GSM/UMTS/LTE capable hhdfphy
+    env.Install(INSTALL_PATH, '#3rdParty/Plextek/x1qs10/x1qs10.bin')         # FPGA image - LTE
+    env.Install(INSTALL_PATH, '#3rdParty/Plextek/x1s05/x1s05_build_v31.bin') # FPGA image - UMTS
+    env.Install(INSTALL_PATH, '#3rdParty/Plextek/x1s11/x1s11_build_v01.bin') # FPGA image - GSM
+    env.Install(INSTALL_PATH+ '/LTE_CoefficientFiles', glob.glob('3rdParty/Plextek/1qs06/LTE_CoefficientFiles/*.dat'))
+
+
+
+
+
+
+

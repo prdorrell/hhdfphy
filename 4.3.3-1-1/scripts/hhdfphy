@@ -1,0 +1,44 @@
+#!/bin/sh
+
+INSTALL_DIR=/opt/hhdfphy
+
+EXE_NAME="${INSTALL_DIR}/hhdfphy"
+START_FPGA="--fpga-4G-image=${INSTALL_DIR}/x1qs10.bin --fpga-3G-image=${INSTALL_DIR}/x1s05_build_v31.bin --fpga-GSM-image=${INSTALL_DIR}/x1s11_build_v01.bin"
+
+RESTART_FPGA="--fpga-skip-load"
+
+ARGS="--pwr_cal_conf_filename=/storage/hhdfphy_pwr_cal.conf --antenna-mode=2 --search-thresh-factor=4.0 --track-thresh-factor=2.0"
+#ARGS="--debug --no-auto-range --init-mode=4G"
+#ARGS="--4G-search-thresh-factor=0.0 --4G-track-thresh-factor=0.0 --4G-search-average=0 --4G-track-average=0"
+
+if [ ! -x $EXE_NAME ]
+then
+    echo "$EXE_NAME not present !!! "
+    echo 
+    exit 0
+fi
+
+
+case "$1" in
+    start)
+        echo "Starting $EXE_NAME..."
+        echo $EXE_NAME $START_FPGA $ARGS
+        $EXE_NAME $START_FPGA $ARGS &
+        ;;
+    restart)
+        echo "Restarting $EXE_NAME..."
+        killall $EXE_NAME
+        $EXE_NAME $RESTART_FPGA $ARGS &
+        ;;
+    stop)
+        killall $EXE_NAME
+        ;;
+    *)
+        echo "Usage: /etc/rc.d/init.d/hhdfphy {start|restart|stop}"
+        echo
+        exit 1
+        ;;
+esac
+
+exit 
+

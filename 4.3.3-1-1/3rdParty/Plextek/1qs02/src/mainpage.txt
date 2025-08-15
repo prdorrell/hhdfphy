@@ -1,0 +1,213 @@
+/*!
+
+\mainpage hhdfphy
+
+
+\section intro Introduction
+
+This documentation covers the internals of the hand held direction finder physical interface software (hhdfphy).
+The hhdfphy program is a linux application that controls the radio hardware and FPGA.
+
+\section cmp Compiling
+\subsection xc Cross Compiling
+
+The cross compiling to arm has been performed under centos5 on x86.
+It is assumed the freescale ltib is installed so the appropriate compiler and libraries are avaliable.  
+Python and the numpy package (package availiable in the epel5 repository for use with centos) are also required to compile some precalculated tables.
+
+Make sure the environment varable CROSS_COMPILE has been exported as the prefix to the cross compiler tool chain.  
+
+For example, the default from the freescale ltib installation is:
+
+/opt/freescale/usr/local/gcc-4.1.2-glibc-2.5-nptl-3/arm-none-linux-gnueabi/bin/arm-none-linux-gnueabi-
+
+To clean: \code make -f makefile.arm clean \endcode
+
+To compile: \code make -f makefile.arm \endcode
+
+\subsection cyg Cygwin Compile
+At the start of developement the program could be compiled for the host x86 under cygwin.
+This is probably only useful for some initial debugging and developement and the --fake-hardware flag would have to be used to stop the program trying to communicate with the (non-existant) fpga.
+This build isn't used much any more and may be broken.
+
+Use make -f makefile.host
+
+
+\section user User Viewpoint
+
+The user of this application connects via a raw tcp/ip socket.
+This will usually be a higher level program that displays the result but can be a manual terminal connection for debugging purposes.
+
+
+\subsection cmdln Command Line Options
+
+Command line options are used to modify default parameters of the program.
+They collected in the ConfigOptions class which also defines the defaults and are parsed in main.cpp.
+Brief descriptions exist in the ::usage function in main.cpp.
+
+
+\subsection cmds Socket Commands
+
+The program acts as a server listening (on default) to port 55555.
+Using a raw tcp/ip terminal (putty http://www.chiark.greenend.org.uk/~sgtatham/putty/ for example) a manual interactive session can be started.
+The commands are defined in an x-macro style header in the file interface.def.
+They are ascii human-readable to allow easier debugging.
+A command consists of a string of charactors terminated in a \\n.
+Basic help for a reminder of the commands and usage is achieved by "#help" or "#help #command".
+
+
+\section overview Code Overview
+
+
+\subsection s1 Top Level Actions
+
+::main is located in main.cpp.
+The command line option parseing is performed here and the ConfigOptions structure modified.
+The function then calls various module initialisation functions.
+Radio::initialise is called first as the radio chip synthesises the 19.2MHz clock and we want to make sure the clocks are turned on first.
+FPGA::initialise sets up the memory mappings for talking to the fpga.
+FPGA::load_image may be called depending on command line options to load the image.
+ADC::initialise and DAC::initialise perform any set up of those chips.
+
+A phy_t class object is then created and the phy_t::activate function called to start the main loop.
+This loop will only exit when a quit command is received or there is an unhandled exception.
+It uses the cmdInt_t class to check for and get commands from the socket.
+These are dispacted to the apropriate handler and depending on the state variable calls a function for regular processing ( phy_t::proc_search_and_track or phy_t::proc_cal_ref ).
+
+phy_t owns a cmdInt_t object that is used for the low level socket interface.
+It opens a listening socket and accepts one connection at a time.  
+cmdInt_t::getCommand( cmd_t &cmd ) uses the lower level cmdInt_t::getCommand( std::string &cmdLine ) to get strings from the socket.
+It then splits them up and looks up the appropriate parsing function in a dictionary.
+The parsing function then knows what parameters to expect and how to convert them into internal representation.
+If the command is formated correctly a valid command will be returned to phy_t for the actions to be taken.
+Errors during the socket operations will cause a SocketError exception to be raised.
+
+To add a command create an appropriate entry in interface.def.
+Macros are used to create the function declarations in phy.hpp and cmdint.hpp and also build the lookup dictionaries.
+This should save some typing and associated errors.
+A parser function definition of the appropriate name must be added to cmdint.hpp and a handler to phy.hpp
+
+
+\subsection s2 Hardware Control
+
+Communication to the radio chips is performed by bit bashing the appropriate gpio lines to talk on the spi interfaces.
+The gpio class wraps up the interface to these lines.
+User space access to these lines has been made available through the /sys/class/gpio file nodes.
+When a gpio line is exported an appropriately name directory containing direction and value files is created. (there is a gpio-export.sh script to export all the lines used)
+Creating a gpio object opens the necessary files and allows set / get operations to the line.
+
+The Radio namespace contains functions to talk to the ADF4602 radio chip and RF1480 switch.
+
+The ADC namespace contains functions to talk to the AD9863 ADC chip.
+
+The DAC namespace contains functions to talk to the AD5320 chip that controls the vctcxo frequency.  (This requires an FPGA image to route the appropriate lines.)
+
+
+\subsection s3 FPGA
+
+The FPGA namespace contains functions for communicating with the fpga.
+The physical interface is the mx31's WEIM bus.
+It is a 16bit wide bus but 32bit read/writes are handled automatically.
+FPGA registers considered 32bit entities and indexed with 32bit word addresses.
+e.g. if c pointer arithmatic based on 32bit words is used :
+\code
+uint32_t* base;     // assume this is set to memory map base
+*(base + 1) = data; // store to fpga register 1
+\endcode
+the physical bus activity will access 16 bits at byte address 4 followed by 16 bits at byte address 6.
+
+The standard FPGA registers have been mapped to chip select 0 (CS0) and the ddr control
+register have been mapped to chip select 1 (CS1).
+The linux mmap interface is used to access these chip select address regions.
+By using the mmap function to map pages from the /dev/mem device, physical pages can be brought into application space (which requires root privileges).
+The mx31 memory map puts CS0 at physical address 0xA0000000 and CS1 at 0xA8000000.
+This is performed in FPGA::initialise.
+
+The CS0 registers are generally simple read/write registers, althought there may be some details such as read of the 1pps gps counter register during a change can cause high/low half words to be read out of sync and a second read is required.
+
+The access mechanism for the fpga's memory is more complicated as requests have to be placed onto the FPGA's memory abitrator.
+This memory controller block (MCB) is a hard IP block in the spartan 6 device.
+The software has to use a combination of register accesses to request a block of upto 64 words to be read.
+These are then placed into a fifo by the MCB and software copies these to it's local buffer.
+This functionallity is implemented in FPGA::mem_raw_read and FPGA::mem_raw_write.
+
+The other functions in this namespace are for \ref fpga_prog "loading an image",
+and controlling the \ref correlation "fpga correlator" and aquiring results.
+
+It is worth noting functions ending _fake are versions that send requests to a server on port 55556 to mimic some of the expected fpga functionallity.
+The python script fake.py in the /testing directory implements this server.
+It was useful for initial debug of some of the algorithms and control logic when no fpga was available.
+This script may not be kept up to date to reflect the actual fpga implementation and may be missing functionality.
+
+
+
+\subsubsection fpga_prog Image Loading
+
+The FPGA can be loaded via a serial or parallel (the weim bus) interface.
+
+The parallel loader is implemented in FPGA::send_config_wiem.
+Chip select 3 (CS3)is used for this operation.
+The procedure maps a physical memory page for CS3 and sets some gpio lines to control the load process.
+Each half word is sent sequencially and the address ignored.
+The fpga sets a 'done' line if the image is loaded sucessfuly.
+The calling function FPGA::load_image opens the image file and looks for the sync pattern at the beginning of the file.
+This is used to detect the order of the bits in each byte and the bytes in each halfword so we can apply any corrections as necessary.
+
+The serial loader implemented in FPGA::send_config_byte_serial has never been tested as the faster parallel loader appears to opperate well. 
+The code has not yet been removed.
+
+
+\subsection correlation Correlation
+
+The fpga correlator is implemented with an fft/ifft: 
+\f$
+a \star b = \mathscr{F}^{-1}( \overline{\mathscr{F}(a)} \cdot \mathscr{F}(b) )
+\f$
+
+To overcome the circular correlation effect the input vectors are zero padded before the fft operation and multiple blocks of results overlapped and summed.
+The FPGA actually does the correlation twice (for even and odd samples) as the sample stream is 2x chip rate.
+
+The software has to generate a set of reference chips, leading zero pad, fourier transform, conjugate, and scale.
+The constructor Correlator::Correlator takes a source of \ref refchip "reference chips" and performs those operations.
+
+The kissfft (http://kissfft.sourceforge.net/) library has been used as the BSD license is attractive, and it is very simple to use.
+The well known alternatives fftw (GPL/paid commercial) or fftpack (fortran) did not seem good solutions from licence or ease of cross-compling point of view, especially as ultimate performance is unnecessary.
+
+The other methods in the Correlator class apply another layer of wrapping around the low level FPGA module to set up and aquire the results.
+
+
+\subsubsection refchip Reference Chip Sources
+
+Refernence chips are created with classes derived from CorrelationSource.
+They create blocks of chips for each slot in a frame.
+
+DownlinkPSCHSource is a source of primary synchronisation channel chips.
+It is a fixed sequence of 256 chips at the begining of each slot and is precalculated at compile time using the gencodes.py script.
+
+DownlinkCPICHSource is a source of common pilot channel chips.
+Th scrambling code number is used to create the scrambling code at runtime and generate a set of chips.
+
+UplinkDPCCHSource is a source of primary control channel chips.
+It is based on a known sequence of pilot symbols and the scrambling code.
+The pilot symbols can be 3-8 in length with a 256x code rate, so there can be between 768 and 2048 chips.
+It is 0 padded at the end to create a block of the required number of chips if the number of pilots is too small.
+
+
+
+\subsection s5 Refcal
+
+
+\subsubsection gps_cal GPS
+\subsubsection psch_cal PSCH
+\subsubsection cpich_cal CPICH
+
+
+
+
+\subsection s6 Search and Track
+
+
+
+
+*/
+

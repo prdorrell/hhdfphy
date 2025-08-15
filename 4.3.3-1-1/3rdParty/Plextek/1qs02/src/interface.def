@@ -1,0 +1,417 @@
+/*******************************************************************************
+ *
+ *
+ *******************************************************************************
+ *  Filename:   interface.def
+ *  Author(s):  pdm
+ *******************************************************************************
+ *  File Description
+ *  ================
+ *
+ *      Definition of the interface provided by the application to clients.
+ *
+ ******************************************************************************/
+/** \file interface.def
+ * \brief X-macro style command definitions.
+ *
+ * By declaring macros and then including this file various method declarations,
+ * lookup tables, and help can be automatically created.
+ * The information is held in in this one file to avoid unnecessary duplication
+ * amongst files.
+ * Command recognition and parsing is performed in cmdint.cpp and the parser
+ * function bodies should be added there.
+ * The first letter is checked against the list of commands for a short command.
+ * For compatibility with old version params can then follow with or without 
+ * a space.
+ * The more readable long commands are mostly used for new debug commands
+ * and must have a space or comma between the command and the params so 
+ * the command token can be recognised.
+ *
+ * The handler function bodies are added to phy.cpp.
+ *
+ * \include interface.def
+ *
+ * \cond
+ *****************************************************************************/
+#ifndef COMMAND
+#define COMMAND( a, b, c )
+#endif
+#ifndef ALIAS
+#define ALIAS( a, b, c )
+#endif
+#ifndef ACK
+#define ACK( a, b )
+#endif
+#ifndef USAGE
+#define USAGE( a )
+#endif
+/// \endcond
+
+//
+COMMAND ( CMD_ABORT,                    "#abort",           abort   )
+ALIAS   ( CMD_ABORT,                    "a",                abort   )
+ACK     ( ACK_ABORT_OK,                 "a0"                        )
+USAGE   ( "abort current calibrate or search and track processing"  )
+USAGE   ( "no parmeters"                                            )
+//
+COMMAND ( CMD_QUIT,                     "#quit",            quit    )
+ALIAS   ( CMD_QUIT,                     "q",                quit    )
+USAGE   ( "quit the program listening to these commands"            )
+USAGE   ( "no parmeters"                                            )
+//
+COMMAND ( CMD_CAL_REF_CLOCK,                    "#cal_ref",         cal_ref_clock   )
+ALIAS   ( CMD_CAL_REF_CLOCK,                    "c",                cal_ref_clock   )
+ACK     ( ACK_CAL_REF_CLOCK_OK,                 "c0"                                )
+ACK     ( ACK_CAL_REF_CLOCK_PARAM,              "c"                                 )
+ACK     ( ACK_CAL_REF_CLOCK_STATE,              "c1"                                )
+ACK     ( ACK_CAL_REF_CLOCK_FREQ,               "c2"                                )
+ACK     ( ACK_CAL_REF_CLOCK_DONE,               "CC0"                               )
+ACK     ( ACK_CAL_REF_CLOCK_ABORT_TIMEOUT,      "CAT"                               )
+USAGE   ( "calibrate the vctcxo"                                                    )
+USAGE   ( "parameters        : <cal_type>, [freq_Hz], [code], [nodeB_antenna]"      )
+USAGE   ( "    cal_type      : GPS, CPICH, PSCH"                                    )
+USAGE   ( "    freq_Hz       : frequency in Hz, required for CPICH and PSCH cal"    )
+USAGE   ( "    code          : required for CPICH"                                  )
+USAGE   ( "    nodeB_antenna : optional, CPICH"                                     )
+USAGE   ( "                    nodeB diversity antenna number 1/2, assumed 1"       )
+USAGE   ( "the vctcxo dac value is returned in the ACK_CAL_REF_CLOCK_DONE"          )
+USAGE   ( "message if the calibration is successful (CC0,<dac>)"                    )
+//
+COMMAND ( CMD_SET_BAND,                 "#set_band",        set_band            )
+ALIAS   ( CMD_SET_BAND,                 "b",                set_band            )
+ACK     ( ACK_SET_BAND_OK,              "b0"                                    )
+ACK     ( ACK_SET_BAND_PARAM,           "b"                                     )
+ACK     ( ACK_SET_BAND_STATE,           "b1"                                    )
+USAGE   ( "set operating band"                                                  )
+USAGE   ( "parameters <band>"                                                   )
+USAGE   ( "band string one of UL850, DL850, UL900, DL900, UL1700, DL1700,"      )
+USAGE   ( "                   UL1800, DL1800, UL1900, DL1900, UL2100, DL2100,"  )
+USAGE   ( "                   AUTO, LOAD"                                       )
+USAGE   ( "AUTO lets the software select the band appropriate to a specified"   )
+USAGE   ( "frequency."                                                          )
+USAGE   ( "LOAD lets the software select the band appropriate to a specified"   )
+USAGE   ( "frequency and sets the front-end switch so that the signal is routed")
+USAGE   ( "to a 50 ohm load."                                                   )
+//
+COMMAND ( CMD_UPLINK_ST,                "#ul_search",       ul_search           )
+ALIAS   ( CMD_UPLINK_ST,                "u",                ul_search           )
+ACK     ( ACK_UPLINK_ST_OK,             "u0"                                    )
+ACK     ( ACK_UPLINK_ST_PARAM,          "u"                                     )
+ACK     ( ACK_UPLINK_ST_STATE,          "u1"                                    )
+ACK     ( ACK_UPLINK_ST_FREQ,           "u3"                                    )
+ACK     ( ACK_UPLINK_ST_SEARCHING,      "US1"                                   )
+ACK     ( ACK_UPLINK_ST_TRACKING,       "US2"                                   )
+ACK     ( ACK_UPLINK_ST_RESULT,         "UU"                                    )
+ACK     ( ACK_UPLINK_ST_ABORT_TIMEOUT,  "UAT"                                   )
+USAGE   ( "start or restart a search and track operation"                       )
+USAGE   ( "parameters      : <code num>,<freq_Hz>,<num pilots>"                 )
+USAGE   ( "    code num    : int uplink scrambling code number"                 )
+USAGE   ( "    freq_Hz     : frequency in Hz"                                   )
+USAGE   ( "    num pilots  : 3-8"                                               )
+USAGE   ( "alternatively can be used with a string argument \"restart\""        )
+USAGE   ( "once tracking results sent as:"                                      )
+USAGE   ( "UU <ch pwr dB>,<num paths>,{<pwr1 dB>,<pwr2 dB>,<sample offset>}*n"  )
+//
+COMMAND ( CMD_DOWNLINK_ST,               "#dl_search",      dl_search           )
+ALIAS   ( CMD_DOWNLINK_ST,               "d",               dl_search           )
+ACK     ( ACK_DOWNLINK_ST_OK,            "d0"                                   )
+ACK     ( ACK_DOWNLINK_ST_PARAM,         "d"                                    )
+ACK     ( ACK_DOWNLINK_ST_STATE,         "d1"                                   )
+ACK     ( ACK_DOWNLINK_ST_FREQ,          "d3"                                   )
+ACK     ( ACK_DOWNLINK_ST_SEARCHING,     "DS1"                                  )
+ACK     ( ACK_DOWNLINK_ST_TRACKING,      "DS2"                                  )
+ACK     ( ACK_DOWNLINK_ST_RESULT,        "DD"                                   )
+ACK     ( ACK_DOWNLINK_ST_ABORT_TIMEOUT, "DAT"                                  )
+USAGE   ( "start or restart a search and track operation"                       )
+USAGE   ( "parameters      : <code num>,<freq_Hz>,<num syms>"                   )
+USAGE   ( "    code num    : int uplink scrambling code number"                 )
+USAGE   ( "    freq_Hz     : frequency in Hz"                                   )
+USAGE   ( "    num syms    : 1-8"                                               )
+USAGE   ( "alternatively can be used with a string argument \"restart\""        )
+USAGE   ( "once tracking results sent as:"                                      )
+USAGE   ( "DD <ch pwr dB>,<num paths>,{<pwr1 dB>,<pwr2 dB>,<sample offset>}*n"  )
+//
+COMMAND ( CMD_4G_UPLINK_ST,               "#lte_search",        lte_search      )
+ALIAS   ( CMD_4G_UPLINK_ST,               "l",                  lte_search      )
+ACK     ( ACK_4G_UPLINK_ST_OK,            "l0"                                  )
+ACK     ( ACK_4G_UPLINK_ST_PARAM,         "l"                                   )
+ACK     ( ACK_4G_UPLINK_ST_STATE,         "l1"                                  )
+ACK     ( ACK_4G_UPLINK_ST_FREQ,          "l3"                                  )
+ACK     ( ACK_4G_UPLINK_ST_SEARCHING,     "LS1"                                 )
+ACK     ( ACK_4G_UPLINK_ST_TRACKING,      "LS2"                                 )
+ACK     ( ACK_4G_UPLINK_ST_RESULT,        "LL"                                  )
+ACK     ( ACK_4G_UPLINK_ST_RESULT_RANGING,"LR"                                  )
+ACK     ( ACK_4G_UPLINK_ST_ABORT_TIMEOUT, "LAT"                                 )
+USAGE   ( "start or restart a 4G search and track operation"                    )
+USAGE   ( "parameters      : <freq_Hz>,<ch_filt_1_coeff>,<ch_filt_2_coeff >,<corr_coeff>")
+USAGE   ( "    freq_Hz         : frequency in Hz"                               )
+USAGE   ( "    ch_filt_1_coeff : file containing the coefficients for channel filter 1")
+USAGE   ( "    ch_filt_2_coeff : file containing the coefficients for channel filter 2")
+USAGE   ( "    corr_coeff      : file containing the correlator coefficients"   )
+USAGE   ( "alternatively can be used with a string argument \"restart\""        )
+USAGE   ( "once tracking results sent as:"                                      )
+USAGE   ( "LL <ch pwr dB>,<num paths>,{<det pwr dB>,<sample offset>}*n"         )
+USAGE   ( "or if ranging in progress as:"                                       )
+USAGE   ( "LR <ch pwr dB>,<num paths>,{<det pwr dB>,<sample offset>}*n"         )
+//
+COMMAND ( CMD_4G_REGR4G_ST,               "#regression_4g",     regression_4g   )
+ALIAS   ( CMD_4G_REGR4G_ST,               "r",                  regression_4g   )
+ACK     ( ACK_4G_REGR4G_ST_OK,            "r0"                                  )
+ACK     ( ACK_4G_REGR4G_ST_PARAM,         "r"                                   )
+ACK     ( ACK_4G_REGR4G_ST_STATE,         "r1"                                  )
+ACK     ( ACK_4G_REGR4G_ST_ACCEPTED,      "RS0"                                 )
+ACK     ( ACK_4G_REGR4G_ST_RUNNING,       "RS1"                                 )
+ACK     ( ACK_4G_REGR4G_ST_EMPTY,         "RS2"                                 )
+ACK     ( ACK_4G_REGR4G_ST_OVERFLOW,      "RS3"                                 )
+ACK     ( ACK_4G_REGR4G_ST_STATS,         "RS4"                                 )
+ACK     ( ACK_4G_REGR4G_ST_RESULT,        "RR"                                  )
+ACK     ( ACK_4G_REGR4R_ST_TIMEOUT,       "RAT"                                 )
+USAGE   ( "Start a 4G regression interface test using defined files"            )
+USAGE   ( "parameters      : <ch_filt_1_coeff>,<ch_filt_2_coeff >,<corr_coeff>,<test_vec>")
+USAGE   ( "    ch_filt_1_coeff : file containing the coefficients for channel filter 1")
+USAGE   ( "    ch_filt_2_coeff : file containing the coefficients for channel filter 2")
+USAGE   ( "    corr_coeff      : file containing the correlator coefficients"   )
+USAGE   ( "    test_vec        : file containing the test vector samples"       )
+USAGE   ( "Note: All filenames refer to files present on the remote uut."       )
+USAGE   ( "Correlator Results are output as one result per correlator peak:"    )
+USAGE   ( "RR  <peakTime>, <peakNumerator>, <peakDenominator>, <sumPowerAtPeak>")
+USAGE   ( "After all peaks are read the correlator statistics are output:"      )
+USAGE   (" RS4 <numInputMeans>, <peakMeanPower>, <sumMeanPowers>"               )
+//
+COMMAND ( CMD_GET_VERSION,              "#get_version",     get_version         )
+ALIAS   ( CMD_GET_VERSION,              "v",                get_version         )
+ACK     ( ACK_GET_VERSION_OK,           "v"                                     )
+ACK     ( ACK_GET_VERSION_STATE,        "v1"                                    )
+USAGE   ( "gets the version information"                                        )
+USAGE   ( "the version information is reported as comma-separated strings:"     )
+USAGE   ( "v,<pcb>,<fpga>,<software>"                                           )
+//
+COMMAND ( CMD_SET_MODE,                 "#set_mode",        set_mode            )
+ALIAS   ( CMD_SET_MODE,                 "m",                set_mode            )
+ACK     ( ACK_SET_MODE_OK,              "m0"                                    )
+ACK     ( ACK_SET_MODE_PARAM,           "m"                                     )
+ACK     ( ACK_SET_MODE_STATE,           "m1"                                    )
+ACK     ( ACK_SET_MODE_DONE,            "MM"                                    )
+USAGE   ( "Sets the operating mode, which forces the FPGA image to be reloaded.")
+USAGE   ( "The image must have been defined in the command-line or an error is" )
+USAGE   ( "reported."                                                           )
+USAGE   ( "parameters : <mode>"                                                 )
+USAGE   ( "    mode   : GSM, 3G or 4G"                                          )
+USAGE   ( "Once the appropriate FPGA image has been loaded as single message"   )
+USAGE   ( "summarises the version:"                                             )
+USAGE   ( "MM,<pcb>,<fpga>,<software>"                                          )
+//
+COMMAND ( CMD_SET_STANDBY,              "#set_standby",     set_standby         )
+ALIAS   ( CMD_SET_STANDBY,              "s",                set_standby         )
+ACK     ( ACK_SET_STANDBY_OK,           "s0"                                    )
+ACK     ( ACK_SET_STANDBY_PARAM,        "s"                                     )
+ACK     ( ACK_SET_STANDBY_STATE,        "s1"                                    )
+USAGE   ( "Sets the standby (power-saving) state."                              )
+USAGE   ( "parameters : <state>"                                                )
+USAGE   ( "    state  : ACTIVE"                                                 )
+USAGE   ( "             FPGA_IDLE"                                              )
+USAGE   ( "             ADC_IDLE"                                               )
+USAGE   ( "             FPGA_ADC_IDLE"                                          )
+USAGE   ( "             RADIO_FPGA_ADC_IDLE"                                    )
+//
+COMMAND ( CMD_SET_PAUSES,               "#set_pauses",      set_pauses          )
+ALIAS   ( CMD_SET_PAUSES,               "p",                set_pauses          )
+ACK     ( ACK_SET_PAUSES_OK,            "p0"                                    )
+ACK     ( ACK_SET_PAUSES_PARAM,         "p"                                     )
+ACK     ( ACK_SET_PAUSES_STATE,         "p1"                                    )
+USAGE   ( "Sets the number of idle frames between searching and tracking"       )
+USAGE   ( "iterations.  For searching the iteration period is the pause plus"   )
+USAGE   ( "8 or 9 frames.  For tracking the result interval is the pause plus"  )
+USAGE   ( "12 or 13 frames"                                                     )
+USAGE   ( "parameter : <searching_pause>,<tracking_pause>"                      )
+//
+COMMAND ( CMD_SET_LOW_POWER,            "#set_low_power",   set_low_power       )
+ALIAS   ( CMD_SET_LOW_POWER,            "w",                set_low_power       )
+ACK     ( ACK_SET_LOW_POWER_OK,         "w0"                                    )
+ACK     ( ACK_SET_LOW_POWER_PARAM,      "w"                                     )
+ACK     ( ACK_SET_LOW_POWER_STATE,      "w1"                                    )
+USAGE   ( "Configures the low-power state"                                      )
+USAGE   ( "parameter : <state>"                                                 )
+USAGE   ( "    state  : LOW_POWER"                                              )
+USAGE   ( "             HIGH_SENS"                                              )
+//
+COMMAND ( CMD_CHAN_PWR,                 "#chan_pwr",        chan_pwr            )
+ALIAS   ( CMD_CHAN_PWR,                 "p",                chan_pwr            )
+ACK     ( ACK_CHAN_PWR_OK,              "p0"                                    )
+ACK     ( ACK_CHAN_PWR_PARAM,           "p"                                     )
+ACK     ( ACK_CHAN_PWR_STATE,           "p1"                                    )
+ACK     ( ACK_CHAN_PWR_FREQ,            "p3"                                    )
+ACK     ( ACK_CHAN_PWR_RESULT,          "PP"                                    )
+USAGE   ( "start reporting the GSM channel power (must be in GSM mode)"         )
+USAGE   ( "parameters      : <freq_Hz>"                                         )
+USAGE   ( "    freq_Hz     : frequency in Hz"                                   )
+USAGE   ( "Results sent as:"                                                    )
+USAGE   ( "PP <avg ch pwr dB>, {<sub-slot ch pwr dB>}*8/24 (TBD)"               )
+//
+COMMAND ( CMD_SET_ANTENNA,              "#set_antenna",     set_antenna         )
+ALIAS   ( CMD_SET_ANTENNA,              "y",                set_antenna         )
+ACK     ( ACK_SET_ANTENNA_OK,           "y0"                                    )
+ACK     ( ACK_SET_ANTENNA_PARAM,        "y"                                     )
+ACK     ( ACK_SET_ANTENNA_STATE,        "y1"                                    )
+USAGE   ( "Selects the antenna to be used for the next search."                 )
+USAGE   ( "parameters  : <antenna>"                                             )
+USAGE   ( "    antenna : 1 or 2"                                                )
+
+///////////////////////////////////////////////////////////////////////////////
+// debug commands
+///////////////////////////////////////////////////////////////////////////////
+//
+COMMAND ( CMD_DEBUG_PRINT,              "#debug_print",     debug_print     )
+ACK     ( ACK_DEBUG_PRINT_OK,           "#debug_print ok"                   )
+ACK     ( ACK_DEBUG_PRINT_PARAM,        "#debug_print parameter_error"      )
+USAGE   ( "change debug printing level"                                     )
+USAGE   ( "parameter <level> : 0-255 bit mask"                              )
+//
+COMMAND ( CMD_DEBUG_VCTCXO,             "#debug_vctcxo",    debug_vctcxo    )
+ACK     ( ACK_DEBUG_VCTCXO_OK,          "#debug_vctcxo ok"                  )
+ACK     ( ACK_DEBUG_VCTCXO_PARAM,       "#debug_vctcxo parameter_error"     )
+ACK     ( ACK_DEBUG_VCTCXO_STATE,       "#debug_vctcxo state_error"         )
+USAGE   ( "change the vctcxo dac"                                           )
+USAGE   ( "parameters : <dac value>" )
+//
+COMMAND ( CMD_DEBUG_SWITCHES,           "#debug_switches",  debug_switches  )
+ACK     ( ACK_DEBUG_SWITCHES_OK,        "#debug_switches ok"                )
+ACK     ( ACK_DEBUG_SWITCHES_PARAM,     "#debug_switches parameter_error"   )
+ACK     ( ACK_DEBUG_SWITCHES_STATE,     "#debug_switches state_error"       )
+USAGE   ( "set various switches" )
+USAGE   ( "parameters        : <input band> <ADF4602 input> <ADF4602 GPIO>"         )
+USAGE   ( "    input band    : GSM_RX_1/GSM_RX_2/GSM_RX_3/GSM_LB_TX/"               )
+USAGE   ( "                    GSM_HB_TX/WCDMA_1/WCDMA_2/WCDMA_3"                   )
+USAGE   ( "    ADF4602 input : RXLBRF/RXHB1RF/RXHB2RF"                              )
+USAGE   ( "    ADF4602 GPIO  : 0-15"                                                )
+//
+COMMAND ( CMD_DEBUG_REF_CAL_THRESHOLD,        "#debug_ref_cal_threshold",   debug_ref_cal_threshold )
+ACK     ( ACK_DEBUG_REF_CAL_THRESHOLD_OK,     "#debug_ref_cal_threshold ok"                         )
+ACK     ( ACK_DEBUG_REF_CAL_THRESHOLD_PARAM,  "#debug_ref_cal_threshold parameter_error"            )
+USAGE   ( "adjust the reference calibration threshold factor"                                       )
+USAGE   ( "(a dB value added to the default threshold factor)"                                      )
+USAGE   ( "parameters : <double>"                                                                   )
+//
+COMMAND ( CMD_DEBUG_SEARCH_THRESHOLD,        "#debug_search_threshold",   debug_search_threshold )
+ACK     ( ACK_DEBUG_SEARCH_THRESHOLD_OK,     "#debug_search_threshold ok"                        )
+ACK     ( ACK_DEBUG_SEARCH_THRESHOLD_PARAM,  "#debug_search_threshold parameter_error"           )
+USAGE   ( "adjust the search mode threshold factor"                                              )
+USAGE   ( "(a dB value added to the default threshold factor)"                                   )
+USAGE   ( "parameters : <double>"                                                                )
+//
+COMMAND ( CMD_DEBUG_TRACK_THRESHOLD,        "#debug_track_threshold",   debug_track_threshold )
+ACK     ( ACK_DEBUG_TRACK_THRESHOLD_OK,     "#debug_track_threshold ok"                       )
+ACK     ( ACK_DEBUG_TRACK_THRESHOLD_PARAM,  "#debug_track_threshold parameter_error"          )
+USAGE   ( "adjust the track mode threshold factor"                                            )
+USAGE   ( "(a dB value added to the default threshold factor)"                                )
+USAGE   ( "parameters : <double>"                                                             )
+//
+COMMAND ( CMD_DEBUG_SEARCH_THRESHOLD_4G,        "#debug_search_threshold_4G",   debug_search_threshold_4G )
+ACK     ( ACK_DEBUG_SEARCH_THRESHOLD_4G_OK,     "#debug_search_threshold_4G ok"                           )
+ACK     ( ACK_DEBUG_SEARCH_THRESHOLD_4G_PARAM,  "#debug_search_threshold_4G parameter_error"              )
+USAGE   ( "adjust the 4G search mode threshold factor"                                                    )
+USAGE   ( "(a dB value added to the default threshold factor)"                                            )
+USAGE   ( "parameters : <double>"                                                                         )
+//
+COMMAND ( CMD_DEBUG_TRACK_THRESHOLD_4G,        "#debug_track_threshold_4G",   debug_track_threshold_4G )
+ACK     ( ACK_DEBUG_TRACK_THRESHOLD_4G_OK,     "#debug_track_threshold_4G ok"                          )
+ACK     ( ACK_DEBUG_TRACK_THRESHOLD_4G_PARAM,  "#debug_track_threshold_4G parameter_error"             )
+USAGE   ( "adjust the 4G track mode threshold factor"                                                  )
+USAGE   ( "(a dB value added to the default threshold factor)"                                         )
+USAGE   ( "parameters : <double>"                                                                      )
+//
+COMMAND ( CMD_DEBUG_ADF4602,            "#debug_ADF4602",   debug_ADF4602   )
+ACK     ( ACK_DEBUG_ADF4602_OK,         "#debug_ADF4602 ok"                 )
+ACK     ( ACK_DEBUG_ADF4602_PARAM,      "#debug_ADF4602 parameter_error"    )
+ACK     ( ACK_DEBUG_ADF4602_STATE,      "#debug_ADF4602 state_error"        )
+USAGE   ( "send/receive a value via spi to ADF4602"                         )
+USAGE   ( "parameters : <read/write> <reg> [value]"                         )
+USAGE   ( "    r/w    : string read / write (currently only write implemented)" )
+USAGE   ( "    reg    : int reg to access"                                  )
+USAGE   ( "    value  : int value to write"                                 )
+//
+COMMAND ( CMD_DEBUG_ADC,                "#debug_ADC",       debug_adc       )
+ACK     ( ACK_DEBUG_ADC_OK,             "#debug_ADC ok"                     )
+ACK     ( ACK_DEBUG_ADC_PARAM,          "#debug_ADC parameter_error"        )
+ACK     ( ACK_DEBUG_ADC_STATE,          "#debug_ADC state_error"            )
+USAGE   ( "send/receive a value via spi to AD9863"                          )
+USAGE   ( "parameters : <read/write> <reg> [value]"                         )
+USAGE   ( "    r/w    : string read / write (currently only write implemented)" )
+USAGE   ( "    reg    : int reg to access"                                  )
+USAGE   ( "    value  : int value to write"                                 )
+//
+COMMAND ( CMD_DEBUG_RANGING,            "#debug_ranging",   debug_ranging   )
+ACK     ( ACK_DEBUG_RANGING_OK,         "#debug_ranging ok"                 )
+ACK     ( ACK_DEBUG_RANGING_PARAM,      "#debug_ranging parameter_error"    )
+ACK     ( ACK_DEBUG_RANGING_STATE,      "#debug_ranging state_error"        )
+USAGE   ( "change auto ranging behaviour"                                   )
+USAGE   ( "parameters : <string> [value]"                                   )
+USAGE   ( "    string : on  - turn on autoranging"                          )
+USAGE   ( "             off - turn off autoranging"                         )
+USAGE   ( "    value  : optional 0-127 set this value as radio gain"        )
+//
+COMMAND ( CMD_DEBUG_PEEK,               "#debug_peek",  debug_peek          )
+ACK     ( ACK_DEBUG_PEEK_OK,            "#debug_peek ok"                    )
+ACK     ( ACK_DEBUG_PEEK_PARAM,         "#debug_peek parameter_error"       )
+ACK     ( ACK_DEBUG_PEEK_STATE,         "#debug_peek state_error"           )
+USAGE   ( "get raw 32 bit words from the FPGA's DDR"                        )
+USAGE   ( "parameters : <start> <length>"                                   )
+USAGE   ( "    start  : word address to read "                              )
+USAGE   ( "    length : number words to read (max tbd)"                     )
+USAGE   ( "replies    : ACK_DEBUG_PEEK_OK,wordwordword..."                  )
+USAGE   ( "             words in little-endian binary"                      )
+//
+COMMAND ( CMD_DEBUG_POKE,               "#debug_poke",   debug_poke         )
+ACK     ( ACK_DEBUG_POKE_OK,            "#debug_poke ok"                    )
+ACK     ( ACK_DEBUG_POKE_PARAM,         "#debug_poke parameter_error"       )
+ACK     ( ACK_DEBUG_POKE_STATE,         "#debug_poke state_error"           )
+USAGE   ( "put raw 32 bit words in to the FPGA's DDR"                       )
+USAGE   ( "parameters  : address, {word}*n"                                 )
+USAGE   ( "    address : word address start writing at"                     )
+USAGE   ( "    word    : n words to write"                                  )
+//
+COMMAND ( CMD_DEBUG_REG,                "#debug_reg",   debug_reg           )
+ACK     ( ACK_DEBUG_REG_OK,             "#debug_reg ok"                     )
+ACK     ( ACK_DEBUG_REG_PARAM,          "#debug_reg parameter_error"        )
+ACK     ( ACK_DEBUG_REG_STATE,          "#debug_reg state_error"            )
+USAGE   ( "put 32 bit word in to FPGA's register"                           )
+USAGE   ( "parameters : w/r, address, word"                                 )
+USAGE   ( "   w / r   : 'w' to write, 'r' to read"                          )
+USAGE   ( "   address : register / word offset"                             )
+USAGE   ( "   word    : 32 bit data to write"                               )
+//
+COMMAND ( CMD_DEBUG_GPIO,               "#debug_gpio",      debug_gpio      )
+ACK     ( ACK_DEBUG_GPIO_OK,            "#debug_gpio ok"                    )
+ACK     ( ACK_DEBUG_GPIO_PARAM,         "#debug_gpio parameter_error"       )
+ACK     ( ACK_DEBUG_GPIO_STATE,         "#debug_gpio state_error"           )
+USAGE   ( "read/write gpio lines"                                           )
+USAGE   ( "parameter    : <string1> <int>"                                  )
+USAGE   ( "    string1  : high / low / get"                                 )
+USAGE   ( "    int      : gpio file number"                                 )
+USAGE   ( "replies      : ACK_DEBUG_GPIO_OK [0/1]"                          )
+//
+COMMAND ( CMD_DEBUG_GSM,                "#debug_gsm",  debug_gsm            )
+ACK     ( ACK_DEBUG_GSM_OK,             "#debug_gsm ok"                     )
+ACK     ( ACK_DEBUG_GSM_PARAM,          "#debug_gsm parameter_error"        )
+ACK     ( ACK_DEBUG_GSM_STATE,          "#debug_gsm state_error"            )
+USAGE   ( "get GSM results from the FIFO"                                   )
+USAGE   ( "parameters:    : <num_values>"                                   )
+USAGE   ( "    num_values : the number of values to be retrieved"           )
+USAGE   ( "reply:"                                                          )
+USAGE   ( "ACK_DEBUG_GSM_OK {<chan RSSI>}*num_values"                       )
+//
+COMMAND ( CMD_DEBUG_FLOAT,               "#debug_float",    debug_float     )
+ACK     ( ACK_DEBUG_FLOAT_OK,            "#debug_float ok"                  )
+ACK     ( ACK_DEBUG_FLOAT_STATE,         "#debug_float state_error"         )
+USAGE   ( "Confirm 4G fpga float representation matches compiler"           )
+//
+COMMAND ( CMD_DEBUG_HELP,               "#help",            debug_help      )
+ACK     ( ACK_DEBUG_HELP_OK,            "#help ok"                          )
+USAGE   ( "parameter   : [command]"                                         )
+USAGE   ( "    command : command to get help on"                            )
+USAGE   ( "              if missing print all commands"                     )
+
+#undef COMMAND
+#undef ACK
+#undef ALIAS
+#undef USAGE
